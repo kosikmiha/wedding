@@ -11,6 +11,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Полноэкранное SPA: без этого Chrome/Android тянет pull-to-refresh вместо свайпа Swiper к предыдущей секции */
+  overscroll-behavior-y: none;
   /* Одинаковое лёгкое стекло для таблетки и холма (визуально «сильнее» там, где фон плотнее) */
   --wedding-nav-backdrop-blur: 6px;
   --wedding-nav-backdrop-saturate: 1.12;
@@ -127,6 +129,7 @@ html {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overscroll-behavior-y: contain;
 }
 
 .wedding-swiper .swiper-wrapper {

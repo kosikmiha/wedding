@@ -52,8 +52,9 @@ type Props = {
 }
 
 /** Нижний запас под fixed nav + холм на мобилке: `pb-wedding-nav` → `--wedding-nav-clearance` в index.css */
+/** `overscroll-y-contain` — иначе на мобилке жест «назад» по вертикали уходит в pull-to-refresh браузера */
 const slideShell =
-  'box-border flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto px-5 pt-16 pb-wedding-nav'
+  'box-border flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto overscroll-y-contain px-5 pt-16 pb-wedding-nav'
 
 /** Вертикальный Swiper: колесо / свайп по целым секциям; hash в URL */
 export function WeddingPageSections({
@@ -251,7 +252,7 @@ export function WeddingPageSections({
             replayVersion={replay.program}
             className="mx-auto w-full max-w-lg"
           >
-            <h2 className="mb-8 text-center font-(family-name:--sans) text-[0.65rem] font-medium uppercase tracking-[0.35em] text-(--accent) sm:mb-12 sm:text-xs">
+            <h2 className="mb-8 text-center font-(family-name:--sans) text-xs font-medium uppercase tracking-[0.35em] text-(--accent) sm:mb-12 sm:text-sm">
               Как пройдёт день
             </h2>
             <motion.ol

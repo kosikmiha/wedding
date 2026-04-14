@@ -93,7 +93,7 @@ export default function App() {
           <nav
             ref={bottomNavRef}
             id="wedding-bottom-nav"
-            className={`relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-2 rounded-full border border-[color-mix(in_srgb,var(--border)_85%,transparent)] p-[6px] ${BOTTOM_NAV_SURFACE} ${BOTTOM_NAV_SHADOW}`}
+            className={`relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-3 rounded-full border border-[color-mix(in_srgb,var(--border)_85%,transparent)] p-[6px] ${BOTTOM_NAV_SURFACE} ${BOTTOM_NAV_SHADOW}`}
             style={{
               paddingBottom: 'max(6px, env(safe-area-inset-bottom, 0px))',
             }}

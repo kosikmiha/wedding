@@ -155,7 +155,7 @@ export function WeddingMobileBottomNav({
         <nav
           ref={bottomNavRef}
           id="wedding-bottom-nav"
-          className="relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-2 self-center rounded-none border-0 bg-transparent p-[6px] shadow-none"
+          className="relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-3 self-center rounded-none border-0 bg-transparent p-[6px] shadow-none"
           style={{
             paddingBottom: 'max(6px, env(safe-area-inset-bottom, 0px))',
           }}
