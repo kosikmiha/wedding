@@ -155,7 +155,7 @@ export function WeddingMobileBottomNav({
         <nav
           ref={bottomNavRef}
           id="wedding-bottom-nav"
-          className="relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-3 self-center rounded-none border-0 bg-transparent p-[6px] shadow-none"
+          className="relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-4 self-center rounded-none border-0 bg-transparent p-[6px] shadow-none"
           style={{
             paddingBottom: 'max(6px, env(safe-area-inset-bottom, 0px))',
           }}
@@ -210,7 +210,7 @@ export function WeddingMobileBottomNav({
                 className={`wedding-nav-link hidden whitespace-nowrap rounded-full px-2.5 py-1.5 text-center text-[11px] font-medium uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) md:inline-flex! md:px-3.5 md:py-2 md:text-xs ${
                   activeIndex === i
                     ? 'text-(--text-h)'
-                    : 'text-(--text) hover:bg-(--social-bg) hover:text-(--text-h)'
+                    : 'text-(--text)'
                 }`}
                 onClick={(e) => {
                   e.preventDefault()

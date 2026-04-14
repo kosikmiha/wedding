@@ -309,12 +309,12 @@ export function WeddingPageSections({
             <div className="w-full min-h-0 shrink-0">
               <SectionEntrance
                 replayVersion={replay.rsvp}
-                className="mx-auto w-full max-w-2xl min-h-0 text-center"
+                className="mx-auto w-full max-w-2xl min-h-0"
               >
-                <h2 className="mb-4 text-3xl font-medium text-(--text-h) sm:mb-6 sm:text-4xl md:text-5xl">
+                <h2 className="mb-4 text-center font-(family-name:--sans) text-[1.6875rem] font-medium tracking-tight text-(--text-h) sm:mb-6 sm:text-4xl sm:tracking-normal md:text-5xl">
                   Будем рады видеть вас
                 </h2>
-                <p className="mb-0 max-w-2xl text-pretty leading-relaxed text-(--text)">
+                <p className="mb-0 max-w-2xl text-left text-pretty leading-relaxed text-(--text)">
                   Пожалуйста, ответьте до{' '}
                   <strong className="font-medium text-(--text-h)">21 июня</strong>{' '}
                   — так мы сможем учесть каждое место за столом и меню. Аллергии и
@@ -341,7 +341,7 @@ export function WeddingPageSections({
                     <WeddingRsvpStepper />
                   </Suspense>
                 </div>
-                <p className="mt-4 text-sm text-(--text) opacity-90 sm:mt-10">
+                <p className="mt-4 text-center text-sm text-(--text) opacity-90 sm:mt-10">
                   Контакт для вопросов:{' '}
                   <a
                     className="font-medium text-(--accent) underline decoration-(--accent-border) underline-offset-4 transition hover:opacity-80"

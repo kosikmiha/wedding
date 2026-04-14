@@ -16,9 +16,15 @@ html {
   /* Одинаковое лёгкое стекло для таблетки и холма (визуально «сильнее» там, где фон плотнее) */
   --wedding-nav-backdrop-blur: 6px;
   --wedding-nav-backdrop-saturate: 1.12;
+  /*
+   * Нижний «безопасный» inset: env() даёт системную зону (домашняя полоска и т.д.),
+   * на Android в браузере часто 0 — тогда max(..., 1.25rem) не даёт контенту залезать
+   * под жесты / скругления экрана.
+   */
+  --wedding-safe-bottom: env(safe-area-inset-bottom, 0px);
   /* Зона под #wedding-bottom-nav: bottom-4 + высота pill + 10px + safe-area (без холма — md+) */
   --wedding-nav-clearance: calc(
-    env(safe-area-inset-bottom, 0px) + 1rem + 3.5rem + 10px
+    var(--wedding-safe-bottom) + 1rem + 3.5rem + 10px
   );
   scroll-padding-bottom: var(--wedding-nav-clearance);
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -122,6 +128,13 @@ html {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 767px) {
+  /* Запас под системную нижнюю зону (жесты / «чёлка»), когда env() = 0 */
+  #root {
+    padding-bottom: var(--wedding-safe-bottom);
+  }
 }
 
 /* Вертикальный Swiper: слайд = 100% высоты контейнера, иначе внутренний скролл в «Ответ» не срабатывает */
@@ -252,9 +265,33 @@ html {
   color: var(--text);
 }
 
-#wedding-bottom-nav .wedding-nav-icon-btn:hover {
-  background-color: var(--social-bg);
-  color: var(--text-h);
+/* Только реальная мышь / тачпад — иначе на телефоне :hover «залипает» после тапа */
+@media (hover: hover) and (pointer: fine) {
+  #wedding-bottom-nav .wedding-nav-icon-btn:hover {
+    background-color: var(--social-bg);
+    color: var(--text-h);
+  }
+
+  #wedding-bottom-nav a.wedding-nav-link:not([aria-current='location']):hover {
+    background-color: var(--social-bg);
+    color: var(--text-h);
+  }
+}
+
+/* Сенсор: сброс MUI / «hover» после тапа (иначе остаётся полупрозрачный фон) */
+@media (hover: none), (pointer: coarse) {
+  #wedding-bottom-nav .MuiIconButton-root.wedding-nav-icon-btn:hover {
+    background-color: transparent !important;
+  }
+
+  #wedding-bottom-nav a.wedding-nav-link:hover {
+    background-color: transparent;
+    color: var(--text);
+  }
+
+  #wedding-bottom-nav a.wedding-nav-link[aria-current='location']:hover {
+    color: var(--text-h);
+  }
 }
 
 /*
@@ -267,8 +304,9 @@ html {
    * если под контентом ещё остаётся воздух.
    */
   html {
+    --wedding-safe-bottom: max(env(safe-area-inset-bottom, 0px), 1.25rem);
     --wedding-nav-clearance: calc(
-      env(safe-area-inset-bottom, 0px) + 1rem + 3.5rem + 1.5rem + 0.625rem
+      var(--wedding-safe-bottom) + 1rem + 3.5rem + 1.5rem + 0.625rem
     );
   }
 

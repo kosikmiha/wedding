@@ -78,7 +78,7 @@ export default function App() {
         />
       </main>
 
-      <div className="fixed bottom-4 left-0 right-0 z-100 flex justify-center">
+      <div className="fixed left-0 right-0 z-100 flex justify-center md:bottom-4 max-md:bottom-[max(1rem,var(--wedding-safe-bottom))]">
         {isMaxMd ? (
           <WeddingMobileBottomNav
             nav={NAV}
@@ -93,7 +93,7 @@ export default function App() {
           <nav
             ref={bottomNavRef}
             id="wedding-bottom-nav"
-            className={`relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-3 rounded-full border border-[color-mix(in_srgb,var(--border)_85%,transparent)] p-[6px] ${BOTTOM_NAV_SURFACE} ${BOTTOM_NAV_SHADOW}`}
+            className={`relative z-10 flex w-max max-w-[min(100vw-1.5rem,42rem)] gap-4 rounded-full border border-[color-mix(in_srgb,var(--border)_85%,transparent)] p-[6px] ${BOTTOM_NAV_SURFACE} ${BOTTOM_NAV_SHADOW}`}
             style={{
               paddingBottom: 'max(6px, env(safe-area-inset-bottom, 0px))',
             }}
@@ -148,7 +148,7 @@ export default function App() {
                   className={`wedding-nav-link hidden whitespace-nowrap rounded-full px-2.5 py-1.5 text-center text-[11px] font-medium uppercase tracking-wide transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) md:inline-flex! md:px-3.5 md:py-2 md:text-xs ${
                     activeIndex === i
                       ? 'text-(--text-h)'
-                      : 'text-(--text) hover:bg-(--social-bg) hover:text-(--text-h)'
+                      : 'text-(--text)'
                   }`}
                   onClick={(e) => {
                     e.preventDefault()
