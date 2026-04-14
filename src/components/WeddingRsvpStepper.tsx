@@ -23,6 +23,10 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import emailjs from "@emailjs/browser";
 import Confetti from "react-confetti";
 import {
+  setWeddingConfettiForceActive,
+  setWeddingConfettiSuppressed,
+} from "../wedding-confetti-preference";
+import {
   useCallback,
   useLayoutEffect,
   useMemo,
@@ -433,7 +437,8 @@ function RsvpSuccessCelebration() {
       typeof navigator.vibrate === "function"
     ) {
       try {
-        navigator.vibrate([12, 40, 14]);
+        /* Дольше и с более длинными импульсами, чем [12, 40, 14], чтобы отклик был заметнее */
+        navigator.vibrate([38, 55, 45, 65, 42, 52, 35]);
       } catch {
         /* secure context / политика */
       }
@@ -497,6 +502,28 @@ export type RsvpFormValues = {
   /** Необязательно: аллергии, пожелания по столу и т.п. */
   wishes: string;
 };
+
+/** Пасхалки: имя ровно так, присутствие «не смогу», пожелания пустые — без EmailJS. */
+const CONFETTI_EGG_DESTROY = "confetti_destroy";
+const CONFETTI_EGG_CREATE = "confetti_create";
+
+function detectConfettiEasterEgg(
+  data: RsvpFormValues,
+): "destroy" | "create" | null {
+  if (data.attendance !== "no") return null;
+  if (data.wishes.trim() !== "") return null;
+  const name = data.fullName.trim();
+  if (name === CONFETTI_EGG_DESTROY) return "destroy";
+  if (name === CONFETTI_EGG_CREATE) return "create";
+  return null;
+}
+
+type RsvpSubmitStatus =
+  | "idle"
+  | "success"
+  | "success_egg_destroy"
+  | "success_egg_create"
+  | "error";
 
 function subscribeDomTheme(cb: () => void) {
   const el = document.documentElement;
@@ -911,9 +938,7 @@ function RsvpStepperInner() {
 
   const attendance = useWatch({ control, name: "attendance" });
   const [activeStep, setActiveStep] = useState(0);
-  const [submitStatus, setSubmitStatus] = useState<
-    "idle" | "success" | "error"
-  >("idle");
+  const [submitStatus, setSubmitStatus] = useState<RsvpSubmitStatus>("idle");
 
   const stepCompleted = useCallback(
     (index: number) => {
@@ -958,6 +983,22 @@ function RsvpStepperInner() {
 
   const onSubmit = useCallback(
     async (data: RsvpFormValues) => {
+      const egg = detectConfettiEasterEgg(data);
+      if (egg) {
+        if (egg === "destroy") {
+          setWeddingConfettiForceActive(false);
+          setWeddingConfettiSuppressed(true);
+          setSubmitStatus("success_egg_destroy");
+        } else {
+          setWeddingConfettiSuppressed(false);
+          setWeddingConfettiForceActive(true);
+          setSubmitStatus("success_egg_create");
+        }
+        reset();
+        setActiveStep(0);
+        return;
+      }
+
       const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
       const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
       const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
@@ -986,6 +1027,75 @@ function RsvpStepperInner() {
     },
     [reset],
   );
+
+  if (submitStatus === "success_egg_destroy") {
+    return (
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 3,
+          px: 2,
+          borderRadius: 2,
+          bgcolor: "action.hover",
+          border: "1px solid",
+          borderColor: "divider",
+          marginBottom: 2.5,
+        }}
+      >
+        <Typography variant="h6" gutterBottom color="primary">
+          Конфетти отключено
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Праздничное конфетти на сайте выключено, в том числе режим с
+          пасхалки. В день свадьбы и годовщины оно не покажется, пока снова не
+          включите через пасхалку. Письмо не отправлялось.
+        </Typography>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => setSubmitStatus("idle")}
+        >
+          Вернуться к форме
+        </Button>
+      </Box>
+    );
+  }
+
+  if (submitStatus === "success_egg_create") {
+    return (
+      <>
+        <RsvpSuccessCelebration />
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 3,
+            px: 2,
+            borderRadius: 2,
+            bgcolor: "action.hover",
+            border: "1px solid",
+            borderColor: "divider",
+            marginBottom: 2.5,
+          }}
+        >
+          <Typography variant="h6" gutterBottom color="primary">
+            Конфетти снова включено
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Праздничное конфетти уже включено на сайте (как в день свадьбы). В
+            день свадьбы и годовщины оно снова появится само. Письмо не
+            отправлялось.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={() => setSubmitStatus("idle")}
+          >
+            Вернуться к форме
+          </Button>
+        </Box>
+      </>
+    );
+  }
 
   if (submitStatus === "success") {
     return (

@@ -51,7 +51,7 @@ type Props = {
   onActiveIndexChange: (index: number) => void
 }
 
-/** Нижний запас под fixed nav: класс `pb-wedding-nav` в index.css (--wedding-nav-clearance) */
+/** Нижний запас под fixed nav + холм на мобилке: `pb-wedding-nav` → `--wedding-nav-clearance` в index.css */
 const slideShell =
   'box-border flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto px-5 pt-16 pb-wedding-nav'
 
@@ -161,7 +161,7 @@ export function WeddingPageSections({
           >
             <div className="grid w-full gap-10 md:grid-cols-2 md:gap-14">
               <div className="text-left">
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                <h2 className="mb-3 font-(family-name:--sans) text-xs font-medium uppercase tracking-[0.35em] text-(--accent)">
                   Когда
                 </h2>
                 <p className="text-3xl font-light tracking-tight text-(--text-h) md:text-4xl">
@@ -172,19 +172,17 @@ export function WeddingPageSections({
                 </p>
               </div>
               <div className="text-left md:border-l md:border-(--border) md:pl-14">
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                <h2 className="mb-3 font-(family-name:--sans) text-xs font-medium uppercase tracking-[0.35em] text-(--accent)">
                   Где
                 </h2>
                 <p className="text-xl font-light text-(--text-h) md:text-2xl">
                   БЦ «Лениздат»
                 </p>
-                <p className="mt-10 text-sm leading-normal text-(--text) md:text-base">
-                  Набережная реки Фонтанки, 59
-                </p>
-                <p className="mt-10 text-sm leading-normal text-(--text) md:text-base">
-                  Пространство «Высота»
-                </p>
-                <p className="mt-10 text-sm leading-tight text-(--text) md:text-base">
+                <div className="mb-3 text-sm leading-normal text-(--text) md:text-base">
+                  <p>Набережная реки Фонтанки, 59</p>
+                  <p className="mt-1">Пространство «Высота»</p>
+                </div>
+                <p className="text-sm leading-tight text-(--text) md:text-base">
                   Мы будем ждать вас там,<br />
                   где Фонтанка отражает небо,<br />
                   а история встречается с высотой.
@@ -219,13 +217,12 @@ export function WeddingPageSections({
         >
           <SectionEntrance
             replayVersion={replay.story}
-            className="mx-auto max-w-2xl text-center"
+            className="mx-auto max-w-2xl text-left"
           >
-            <blockquote className="font-handwriting text-2xl font-normal leading-snug text-(--text-h) md:text-4xl md:leading-relaxed">
-              «На заводе Фертоник два инженера могли годами жить в соседних
-              кабинетах и не пересечься — пока не пересеклись.»
+            <blockquote className="text-center font-handwriting text-2xl font-normal leading-snug text-(--text-h) md:text-3xl md:leading-relaxed">
+              «Фертоник: не завод, а повод.»
             </blockquote>
-            <p className="mt-10 text-sm leading-relaxed text-(--text) md:text-base">
+            <p className="mt-8 text-sm leading-relaxed text-(--text) md:mt-10 md:text-base">
               Мы оба сидим за компами на том самом месте, которое в разговорах
               зовётся Фертоник (в пропуске там честно написано «Фертоинг», но это
               не мешает нам называть всё по-своему). Михаил — инженер-конструктор:
@@ -254,12 +251,12 @@ export function WeddingPageSections({
             replayVersion={replay.program}
             className="mx-auto w-full max-w-lg"
           >
-            <h2 className="mb-12 text-center text-xs font-semibold uppercase tracking-[0.25em] text-(--accent)">
+            <h2 className="mb-8 text-center font-(family-name:--sans) text-[0.65rem] font-medium uppercase tracking-[0.35em] text-(--accent) sm:mb-12 sm:text-xs">
               Как пройдёт день
             </h2>
             <motion.ol
               key={replay.program}
-              className="relative space-y-0 border-s border-(--border) ps-8"
+              className="relative space-y-0 border-s border-(--border) ps-6 sm:ps-8"
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, amount: 0.35, margin: '-10px' }}
@@ -268,17 +265,19 @@ export function WeddingPageSections({
               {WEDDING_PROGRAM.map((item, index) => (
                 <motion.li
                   key={`${item.time}-${index}`}
-                  className="relative pb-10 last:pb-0"
+                  className="relative pb-5 last:pb-0 sm:pb-10"
                   variants={programItem}
                 >
                   <span
-                    className="absolute -inset-s-[33px] mt-1.5 size-3 rounded-full border-2 border-(--accent) bg-(--bg)"
+                    className="absolute -inset-s-[27px] mt-1 size-2.5 rounded-full border-2 border-(--accent) bg-(--bg) sm:-inset-s-[33px] sm:mt-1.5 sm:size-3"
                     aria-hidden
                   />
-                  <p className="text-sm font-medium tabular-nums text-(--accent)">
+                  <p className="text-xs font-medium tabular-nums text-(--accent) sm:text-sm">
                     {item.time}
                   </p>
-                  <p className="mt-1 text-(--text-h)">{item.description}</p>
+                  <p className="mt-0.5 text-[0.8125rem] leading-snug text-(--text-h) sm:mt-1 sm:text-base sm:leading-normal">
+                    {item.description}
+                  </p>
                 </motion.li>
               ))}
             </motion.ol>

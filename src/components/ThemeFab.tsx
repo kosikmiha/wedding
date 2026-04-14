@@ -1,8 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react'
+import type { CSSProperties } from 'react'
 import type { ThemePreference } from '../theme/context'
 import { useTheme } from '../theme/use-theme'
 
-const ICON = 'size-7 shrink-0 block'
+const ICON_LG = 'size-7 shrink-0 block'
+const ICON_SM = 'size-6 shrink-0 block'
+const ICON_XS = 'size-5 shrink-0 block'
+const ICON_XXS = 'size-4 shrink-0 block'
+const ICON_MICRO = 'size-3 shrink-0 block'
 const STROKE = 2 as const
 
 function label(p: ThemePreference) {
@@ -153,36 +158,80 @@ function getIconPresenceMotion(pref: ThemePreference) {
   }
 }
 
-export function ThemeFab() {
+type ThemeToggleSize = 'default' | 'compact' | 'minimal' | 'tiny' | 'micro'
+
+/** Мобильный навбар: как MUI `outlined`; обводка через box-shadow — на круге ровнее, чем border. */
+const THEME_TOGGLE_OUTLINED =
+  'border-0 bg-transparent shadow-[0_0_0_1px_var(--border)] ring-0 backdrop-blur-none transition-[color,background-color,box-shadow] hover:shadow-[0_0_0_1px_var(--accent-border)] hover:bg-(--social-bg) hover:text-(--accent) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)'
+
+type ThemeToggleButtonProps = {
+  id?: string
+  className?: string
+  size?: ThemeToggleSize
+  style?: CSSProperties
+  /** Только для мобильной кнопки в навбаре — обводка без заливки (аналог MUI `outlined`). */
+  variant?: 'outlined'
+}
+
+/** Кнопка переключения темы: десктопный FAB и мобильный вариант в навбаре. */
+export function ThemeToggleButton({
+  id,
+  className,
+  size = 'default',
+  style,
+  variant,
+}: ThemeToggleButtonProps) {
   const { preference, cyclePreference } = useTheme()
   const presence = getIconPresenceMotion(preference)
+  const iconCls =
+    size === 'micro'
+      ? ICON_MICRO
+      : size === 'tiny'
+        ? ICON_XXS
+        : size === 'minimal'
+          ? ICON_XS
+          : size === 'compact'
+            ? ICON_SM
+            : ICON_LG
 
   const icon =
     preference === 'light' ? (
-      <IconSun className={ICON} />
+      <IconSun className={iconCls} />
     ) : preference === 'dark' ? (
-      <IconMoon className={ICON} />
+      <IconMoon className={iconCls} />
     ) : (
-      <IconSystem className={ICON} />
+      <IconSystem className={iconCls} />
     )
+
+  const innerWrap =
+    size === 'micro'
+      ? 'size-3'
+      : size === 'tiny'
+        ? 'size-4'
+        : size === 'minimal'
+          ? 'size-5'
+          : size === 'compact'
+            ? 'size-6'
+            : 'size-7'
+
+  const variantClass = variant === 'outlined' ? THEME_TOGGLE_OUTLINED : ''
 
   return (
     <motion.button
-      id="theme-fab"
+      id={id}
       type="button"
       onClick={cyclePreference}
       aria-label={`Тема: ${label(preference)}. Нажмите, чтобы переключить`}
       title={`${label(preference)} — сменить тему`}
-      className="fixed z-110 flex size-14 items-center justify-center rounded-full border border-(--border) bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] text-(--text-h) shadow-[0_10px_40px_rgba(0,0,0,0.12)] ring-1 ring-[color-mix(in_srgb,var(--text-h)_8%,transparent)] backdrop-blur-md transition-colors hover:border-(--accent-border) hover:text-(--accent) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)] dark:ring-[color-mix(in_srgb,#fff_6%,transparent)] sm:size-15"
-      style={{
-        top: 'max(1rem, env(safe-area-inset-top, 0px))',
-        right: 'max(1rem, env(safe-area-inset-right, 0px))',
-      }}
+      className={[variantClass, className].filter(Boolean).join(' ')}
+      style={style}
       whileHover={{ scale: 1.06 }}
       whileTap={{ scale: 0.94 }}
       transition={{ type: 'spring', stiffness: 500, damping: 32 }}
     >
-      <span className="relative flex size-7 items-center justify-center [&_svg]:mx-auto [&_svg]:my-auto">
+      <span
+        className={`relative flex ${innerWrap} items-center justify-center [&_svg]:mx-auto [&_svg]:my-auto`}
+      >
         <AnimatePresence mode="sync" initial={false}>
           <motion.span
             key={preference}
@@ -197,5 +246,18 @@ export function ThemeFab() {
         </AnimatePresence>
       </span>
     </motion.button>
+  )
+}
+
+export function ThemeFab() {
+  return (
+    <ThemeToggleButton
+      id="theme-fab"
+      className="fixed z-110 hidden size-14 items-center justify-center rounded-full border border-(--border) bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] text-(--text-h) shadow-[0_10px_40px_rgba(0,0,0,0.12)] ring-1 ring-[color-mix(in_srgb,var(--text-h)_8%,transparent)] backdrop-blur-md transition-colors hover:border-(--accent-border) hover:text-(--accent) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)] dark:ring-[color-mix(in_srgb,#fff_6%,transparent)] sm:size-15 md:flex"
+      style={{
+        top: 'max(1rem, env(safe-area-inset-top, 0px))',
+        right: 'max(1rem, env(safe-area-inset-right, 0px))',
+      }}
+    />
   )
 }

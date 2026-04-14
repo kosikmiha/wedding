@@ -6,6 +6,11 @@ import {
   useSyncExternalStore,
 } from 'react'
 import Confetti from 'react-confetti'
+import {
+  getWeddingConfettiForceActiveSnapshot,
+  getWeddingConfettiSuppressedSnapshot,
+  subscribeWeddingConfettiPreference,
+} from '../wedding-confetti-preference'
 import { isWeddingConfettiPeriod } from '../wedding'
 
 /** Совпадает с `tween-functions.linear` — без зависимости на типы пакета. */
@@ -77,6 +82,26 @@ function usePrefersReducedMotion() {
     subscribeReducedMotion,
     reducedMotionSnapshot,
     reducedMotionSnapshotServer,
+  )
+}
+
+function suppressedSnapshotServer() {
+  return false
+}
+
+function useWeddingConfettiSuppressed() {
+  return useSyncExternalStore(
+    subscribeWeddingConfettiPreference,
+    getWeddingConfettiSuppressedSnapshot,
+    suppressedSnapshotServer,
+  )
+}
+
+function useWeddingConfettiForceActive() {
+  return useSyncExternalStore(
+    subscribeWeddingConfettiPreference,
+    getWeddingConfettiForceActiveSnapshot,
+    suppressedSnapshotServer,
   )
 }
 
@@ -162,9 +187,14 @@ function TopRain({
 export function WeddingConfetti({ now }: { now: Dayjs }) {
   const { width, height } = useViewportSize()
   const reducedMotion = usePrefersReducedMotion()
+  const userSuppressed = useWeddingConfettiSuppressed()
+  const userForceActive = useWeddingConfettiForceActive()
   const active = useMemo(
-    () => !reducedMotion && isWeddingConfettiPeriod(now),
-    [now, reducedMotion],
+    () =>
+      !reducedMotion &&
+      !userSuppressed &&
+      (isWeddingConfettiPeriod(now) || userForceActive),
+    [now, reducedMotion, userSuppressed, userForceActive],
   )
 
   const [burstSlots, setBurstSlots] = useState<number[]>([])

@@ -11,7 +11,10 @@
 
 html {
   scroll-behavior: smooth;
-  /* Зона под #wedding-bottom-nav: bottom-4 + высота pill + 10px над панелью + safe-area */
+  /* Одинаковое лёгкое стекло для таблетки и холма (визуально «сильнее» там, где фон плотнее) */
+  --wedding-nav-backdrop-blur: 6px;
+  --wedding-nav-backdrop-saturate: 1.12;
+  /* Зона под #wedding-bottom-nav: bottom-4 + высота pill + 10px + safe-area (без холма — md+) */
   --wedding-nav-clearance: calc(
     env(safe-area-inset-bottom, 0px) + 1rem + 3.5rem + 10px
   );
@@ -165,9 +168,132 @@ html {
   min-height: var(--wedding-nav-clearance);
 }
 
+/*
+ * Десктоп: blur у таблетки. Мобилка: один слой `.wedding-mobile-monolith-glass` (холм + бар).
+ */
+@media (min-width: 768px) {
+  #wedding-bottom-nav {
+    -webkit-backdrop-filter: blur(var(--wedding-nav-backdrop-blur))
+      saturate(var(--wedding-nav-backdrop-saturate));
+    backdrop-filter: blur(var(--wedding-nav-backdrop-blur))
+      saturate(var(--wedding-nav-backdrop-saturate));
+  }
+}
+
+.wedding-mobile-monolith-glass {
+  -webkit-backdrop-filter: blur(var(--wedding-nav-backdrop-blur))
+    saturate(var(--wedding-nav-backdrop-saturate));
+  backdrop-filter: blur(var(--wedding-nav-backdrop-blur))
+    saturate(var(--wedding-nav-backdrop-saturate));
+  /*
+   * Тень по контуру clip-path: drop-shadow на том же слое, что и стекло (не box-shadow на прямоугольнике).
+   */
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.16));
+}
+
+[data-theme='dark'] .wedding-mobile-monolith-glass {
+  filter: drop-shadow(0 10px 32px rgba(0, 0, 0, 0.42));
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] .wedding-mobile-monolith-glass {
+    filter: drop-shadow(0 10px 32px rgba(0, 0, 0, 0.42));
+  }
+}
+
+.wedding-nav-hill-surface {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
+[data-theme='dark'] .wedding-nav-hill-surface {
+  background-color: color-mix(in srgb, var(--bg) 63%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] .wedding-nav-hill-surface {
+    background-color: color-mix(in srgb, var(--bg) 63%, transparent);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  #wedding-bottom-nav,
+  .wedding-mobile-monolith-glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .wedding-mobile-monolith-glass {
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.08));
+  }
+
+  [data-theme='dark'] .wedding-mobile-monolith-glass {
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.2));
+  }
+
+  @media (prefers-color-scheme: dark) {
+    [data-theme='system'] .wedding-mobile-monolith-glass {
+      filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.2));
+    }
+  }
+}
+
 /* Активный пункт: фон — скользящий pill в App; здесь только усиление текста при необходимости */
-#wedding-bottom-nav a.wedding-nav-link[aria-current='location'] {
+#wedding-bottom-nav a.wedding-nav-link[aria-current='location'],
+#wedding-bottom-nav .wedding-nav-icon-btn[aria-current='location'] {
   color: var(--text-h);
+}
+
+#wedding-bottom-nav .wedding-nav-icon-btn {
+  color: var(--text);
+}
+
+#wedding-bottom-nav .wedding-nav-icon-btn:hover {
+  background-color: var(--social-bg);
+  color: var(--text-h);
+}
+
+/*
+  Мобилка: border-top у nav прозрачный под холмом.
+  WeddingBottomNavTopStroke — один SVG-path (плечо + дуга), без разрыва и без ::before/::after.
+*/
+@media (max-width: 767px) {
+  /*
+   * Нижний отступ под таблетку + холм (ThemeToggle); чуть меньше, чем в прошлой итерации,
+   * если под контентом ещё остаётся воздух.
+   */
+  html {
+    --wedding-nav-clearance: calc(
+      env(safe-area-inset-bottom, 0px) + 1rem + 3.5rem + 1.5rem + 0.625rem
+    );
+  }
+
+  #wedding-bottom-nav {
+    --wedding-nav-pill-r: 21px;
+    --wedding-nav-corner-x: -1px;
+    --wedding-nav-top-stroke-y: -1px;
+  }
+
+  /*
+    Ширина/позиция без inset от торца: иначе весь SVG смещается внутрь и дуга
+    начинается «раньше», чем скругление border у таблетки.
+  */
+  #wedding-bottom-nav .wedding-nav-top-stroke-side {
+    box-sizing: border-box;
+    top: var(--wedding-nav-top-stroke-y);
+    height: var(--wedding-nav-pill-r);
+    width: calc(50% - 1.25rem + 1px);
+    overflow: visible;
+  }
+
+  #wedding-bottom-nav .wedding-nav-top-stroke-left {
+    left: var(--wedding-nav-corner-x);
+  }
+
+  #wedding-bottom-nav .wedding-nav-top-stroke-right {
+    right: var(--wedding-nav-corner-x);
+  }
 }
 
 body {

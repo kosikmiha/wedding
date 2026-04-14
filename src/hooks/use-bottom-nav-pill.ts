@@ -7,6 +7,8 @@ export function useBottomNavPill(
   activeIndex: number,
   navRef: RefObject<HTMLElement | null>,
   linkRefs: RefObject<(HTMLElement | null)[]>,
+  /** Смена мобилка/десктоп — другой `<nav>` у того же ref */
+  layoutKey?: unknown,
 ): BottomNavPill {
   const [pill, setPill] = useState<BottomNavPill>({
     left: 0,
@@ -45,7 +47,7 @@ export function useBottomNavPill(
       ro.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [activeIndex, navRef, linkRefs])
+  }, [activeIndex, navRef, linkRefs, layoutKey])
 
   return pill
 }
