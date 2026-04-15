@@ -7,6 +7,9 @@ export const WEDDING_SECTION_IDS = [
   'rsvp',
 ] as const
 
+/** Индекс слайда Swiper для секции «Ответ» (скролл внутри слайда сбрасываем при входе) */
+export const WEDDING_RSVP_SECTION_INDEX = WEDDING_SECTION_IDS.indexOf('rsvp')
+
 export type WeddingSectionId = (typeof WEDDING_SECTION_IDS)[number]
 
 /** Индекс секции по `#hash` в URL (или 0), для Swiper и нижнего меню */

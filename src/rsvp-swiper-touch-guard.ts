@@ -1,6 +1,7 @@
 import type { Swiper as SwiperType } from 'swiper'
+import { WEDDING_RSVP_SECTION_INDEX } from './wedding-sections'
 
-const RSVP_SLIDE_INDEX = 4
+const RSVP_SLIDE_INDEX = WEDDING_RSVP_SECTION_INDEX
 const EDGE_EPS_PX = 8
 /** После последнего wheel смена секции возможна только когда «тишина» дольше этого окна */
 const WHEEL_SETTLE_MS = 320

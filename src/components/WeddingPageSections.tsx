@@ -1,7 +1,15 @@
 import Divider from '@mui/material/Divider'
 import type { Dayjs } from 'dayjs'
 import { motion, type Variants } from 'motion/react'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react'
 import type { Swiper as SwiperType } from 'swiper'
 import { HashNavigation, Keyboard, Mousewheel } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -13,7 +21,10 @@ import type { WeddingPhase } from '../wedding'
 import { WEDDING_DETAILS_CHIPS } from '../wedding-details-chips'
 import { WEDDING_PROGRAM } from '../wedding-program'
 import { setRsvpTouchGuardContext } from '../rsvp-swiper-touch-guard'
-import { weddingSectionIndexFromHash } from '../wedding-sections'
+import {
+  WEDDING_RSVP_SECTION_INDEX,
+  weddingSectionIndexFromHash,
+} from '../wedding-sections'
 
 const programList: Variants = {
   hidden: {},
@@ -54,11 +65,7 @@ type Props = {
 /** Нижний запас под fixed nav + холм на мобилке: `pb-wedding-nav` → `--wedding-nav-clearance` в index.css */
 /** `overscroll-y-contain` — иначе на мобилке жест «назад» по вертикали уходит в pull-to-refresh браузера */
 const slideShell =
-  'box-border flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto overscroll-y-contain px-5 pt-16 pb-wedding-nav'
-
-/** Первая секция: без contain, чтобы на главной работал нативный pull-to-refresh */
-const slideShellHero =
-  'box-border flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto overscroll-y-auto px-5 pt-16 pb-wedding-nav'
+  'box-border flex min-h-0 min-w-0 max-w-full flex-1 flex-col justify-center overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 pt-16 pb-wedding-nav'
 
 /** Вертикальный Swiper: колесо / свайп по целым секциям; hash в URL */
 export function WeddingPageSections({
@@ -92,6 +99,19 @@ export function WeddingPageSections({
     [],
   )
 
+  const resetRsvpInnerScroll = useCallback(() => {
+    const el = rsvpScrollRef.current
+    if (el) el.scrollTop = 0
+  }, [])
+
+  /** При открытии с #rsvp ref может появиться после первого кадра */
+  useLayoutEffect(() => {
+    if (initialSlide !== WEDDING_RSVP_SECTION_INDEX) return
+    resetRsvpInnerScroll()
+    const id = requestAnimationFrame(resetRsvpInnerScroll)
+    return () => cancelAnimationFrame(id)
+  }, [initialSlide, resetRsvpInnerScroll])
+
   return (
     <Swiper
       className="wedding-swiper h-full min-h-0 w-full flex-1"
@@ -102,7 +122,6 @@ export function WeddingPageSections({
       initialSlide={initialSlide}
       nested
       threshold={40}
-      touchReleaseOnEdges
       mousewheel={{
         forceToAxis: true,
         sensitivity: 0.85,
@@ -117,6 +136,9 @@ export function WeddingPageSections({
         onSwiper(s)
       }}
       onSlideChange={(s) => onActiveIndexChange(s.activeIndex)}
+      onSlideChangeTransitionEnd={(s) => {
+        if (s.activeIndex === WEDDING_RSVP_SECTION_INDEX) resetRsvpInnerScroll()
+      }}
     >
       <SwiperSlide
         className="flex! min-h-0 flex-col"
@@ -124,7 +146,7 @@ export function WeddingPageSections({
       >
         <section
           id="hero"
-          className={`relative flex min-h-0 flex-col justify-center bg-linear-to-br from-(--bg) via-violet-50/40 to-rose-50/30 ${slideShellHero} dark:via-violet-950/20 dark:to-stone-950/30`}
+          className={`relative flex min-h-dvh flex-col justify-center bg-linear-to-br from-(--bg) via-violet-50/40 to-rose-50/30 ${slideShell} dark:via-violet-950/20 dark:to-stone-950/30`}
           aria-label="Главная"
         >
           <SectionEntrance
@@ -158,7 +180,7 @@ export function WeddingPageSections({
       >
         <section
           id="details"
-          className={`relative flex min-h-0 flex-col justify-center border-t border-(--border) bg-(--bg) ${slideShell}`}
+          className={`relative flex min-h-dvh flex-col justify-center border-t border-(--border) bg-(--bg) ${slideShell}`}
           aria-label="Детали"
         >
           <SectionEntrance
@@ -218,7 +240,7 @@ export function WeddingPageSections({
       >
         <section
           id="story"
-          className={`relative flex min-h-0 flex-col justify-center border-t border-(--border) bg-linear-to-b from-(--bg) to-(--code-bg)/50 ${slideShell} dark:to-zinc-900/40`}
+          className={`relative flex min-h-dvh flex-col justify-center border-t border-(--border) bg-linear-to-b from-(--bg) to-(--code-bg)/50 ${slideShell} dark:to-zinc-900/40`}
           aria-label="История"
         >
           <SectionEntrance
@@ -250,7 +272,7 @@ export function WeddingPageSections({
       >
         <section
           id="program"
-          className={`relative flex min-h-0 flex-col justify-center border-t border-(--border) bg-(--bg) ${slideShell}`}
+          className={`relative flex min-h-dvh flex-col justify-center border-t border-(--border) bg-(--bg) ${slideShell}`}
           aria-label="Программа"
         >
           <SectionEntrance

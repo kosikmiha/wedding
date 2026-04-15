@@ -4,7 +4,7 @@ import HomeRounded from '@mui/icons-material/HomeRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import SendRounded from '@mui/icons-material/SendRounded'
 import IconButton from '@mui/material/IconButton'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Swiper as SwiperType } from 'swiper'
 import { ThemeFab } from './components/ThemeFab'
 import { WeddingConfetti } from './components/WeddingConfetti'
@@ -49,7 +49,7 @@ export default function App() {
     weddingSectionIndexFromHash(),
   )
   const isMaxMd = useIsMaxMd()
-  const navPill = useBottomNavPill(
+  const { pill: navPill, pillTransitionsEnabled } = useBottomNavPill(
     activeIndex,
     bottomNavRef,
     bottomNavLinkRefs,
@@ -57,13 +57,6 @@ export default function App() {
   )
 
   useBottomNavEndRadius(bottomNavRef, isMaxMd)
-
-  useEffect(() => {
-    const root = document.documentElement
-    if (activeIndex > 0) root.classList.add('wedding-lock-vertical-overscroll')
-    else root.classList.remove('wedding-lock-vertical-overscroll')
-    return () => root.classList.remove('wedding-lock-vertical-overscroll')
-  }, [activeIndex])
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -94,6 +87,7 @@ export default function App() {
             bottomNavRef={bottomNavRef}
             bottomNavLinkRefs={bottomNavLinkRefs}
             navPill={navPill}
+            pillTransitionsEnabled={pillTransitionsEnabled}
             surfaceClass={BOTTOM_NAV_SURFACE}
           />
         ) : (
@@ -115,8 +109,9 @@ export default function App() {
                 width: navPill.width,
                 height: navPill.height,
                 opacity: navPill.width > 0 ? 1 : 0,
-                transition:
-                  'left 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), top 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), opacity 0.2s ease',
+                transition: pillTransitionsEnabled
+                  ? 'left 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), top 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), opacity 0.2s ease'
+                  : 'none',
                 transform: 'translateZ(0)',
                 backfaceVisibility: 'hidden',
               }}

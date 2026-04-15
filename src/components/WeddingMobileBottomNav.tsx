@@ -6,7 +6,6 @@ import {
   useState,
   type RefObject,
 } from 'react'
-import { flushSync } from 'react-dom'
 import type { Swiper as SwiperType } from 'swiper'
 import { buildMobileMonolithOutlinePathPx } from '../wedding-mobile-monolith-path'
 import { estimateHillBoxFromViewport } from '../wedding-nav-hill-geometry'
@@ -39,6 +38,7 @@ type Props = {
   bottomNavRef: RefObject<HTMLElement | null>
   bottomNavLinkRefs: RefObject<(HTMLElement | null)[]>
   navPill: BottomNavPill
+  pillTransitionsEnabled: boolean
   surfaceClass: string
 }
 
@@ -49,6 +49,7 @@ export function WeddingMobileBottomNav({
   bottomNavRef,
   bottomNavLinkRefs,
   navPill,
+  pillTransitionsEnabled,
   surfaceClass,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -78,10 +79,8 @@ export function WeddingMobileBottomNav({
 
       const Htot = hillH + pillH
       if (sync) {
-        flushSync(() => {
-          setPathD(d)
-          setSvgBox({ w: W, h: Htot })
-        })
+        setPathD(d)
+        setSvgBox({ w: W, h: Htot })
       } else {
         setPathD((prev) => (prev === d ? prev : d))
         setSvgBox({ w: W, h: Htot })
@@ -170,8 +169,9 @@ export function WeddingMobileBottomNav({
               width: navPill.width,
               height: navPill.height,
               opacity: navPill.width > 0 ? 1 : 0,
-              transition:
-                'left 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), top 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), opacity 0.2s ease',
+              transition: pillTransitionsEnabled
+                ? 'left 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), top 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), width 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1), opacity 0.2s ease'
+                : 'none',
               transform: 'translateZ(0)',
               backfaceVisibility: 'hidden',
             }}

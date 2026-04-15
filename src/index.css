@@ -11,6 +11,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Полноэкранное SPA: без этого Chrome/Android тянет pull-to-refresh вместо свайпа Swiper к предыдущей секции */
+  overscroll-behavior-y: none;
   /* Одинаковое лёгкое стекло для таблетки и холма (визуально «сильнее» там, где фон плотнее) */
   --wedding-nav-backdrop-blur: 6px;
   --wedding-nav-backdrop-saturate: 1.12;
@@ -40,14 +42,6 @@ html {
   @media (max-width: 1024px) {
     font-size: 16px;
   }
-}
-
-/*
- * На первой секции класс не вешаем — нативный pull-to-refresh на таче.
- * Со 2-й секции App вешает класс, иначе жест «назад» по вертикали даёт перезагрузку вместо Swiper.
- */
-html.wedding-lock-vertical-overscroll {
-  overscroll-behavior-y: none;
 }
 
 [data-theme='light'] {
@@ -113,6 +107,9 @@ html.wedding-lock-vertical-overscroll {
 html {
   color: var(--text);
   background: var(--bg);
+  /* Иначе body с flex растягивается по контенту (миллионы px при min-h-dvh у секций) */
+  height: 100%;
+  overflow: hidden;
 }
 
 [data-theme='dark'] #social .button-icon {
@@ -125,22 +122,37 @@ html {
   }
 }
 
+/*
+ * viewport-fit=cover в index.html: фон может доходить до краёв экрана.
+ * safe-area — чтобы #root не уезжал под вырезы; зона под полоской жестов заливается --bg.
+ * height + max-height: одна «экранная» оболочка; иначе min-height у body без потолка тянется за контентом.
+ */
+body {
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background: var(--bg);
+}
+
 #root {
-  height: 100dvh;
+  flex: 1;
   min-height: 0;
+  height: 100%;
   width: 100%;
   max-width: 100%;
   margin: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-}
-
-@media (max-width: 767px) {
-  /* Запас под системную нижнюю зону (жесты / «чёлка»), когда env() = 0 */
-  #root {
-    padding-bottom: var(--wedding-safe-bottom);
-  }
+  overflow: hidden;
 }
 
 /* Вертикальный Swiper: слайд = 100% высоты контейнера, иначе внутренний скролл в «Ответ» не срабатывает */
@@ -341,10 +353,6 @@ html {
   #wedding-bottom-nav .wedding-nav-top-stroke-right {
     right: var(--wedding-nav-corner-x);
   }
-}
-
-body {
-  margin: 0;
 }
 
 @layer base {
