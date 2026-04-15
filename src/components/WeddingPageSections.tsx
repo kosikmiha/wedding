@@ -118,8 +118,6 @@ export function WeddingPageSections({
   onActiveIndexChange,
 }: Props) {
   const initialSlide = useMemo(() => weddingSectionIndexFromHash(), [])
-  /** Индекс после окончания анимации свайпа — сброс внутреннего скролла секции */
-  const [settledSlideIndex, setSettledSlideIndex] = useState(initialSlide)
   const [phaseBySlide, setPhaseBySlide] = useState<SectionContentPhase[]>(() =>
     Array.from({ length: SECTION_COUNT }, (_, i) =>
       i === initialSlide ? 'enterWait' : 'hidden',
@@ -169,6 +167,16 @@ export function WeddingPageSections({
     () => phaseBySlide.findIndex((p) => p === 'enterWait'),
     [phaseBySlide],
   )
+
+  /**
+   * Сброс внутреннего скролла секции до отрисовки входа — иначе поздний сброс на transitionEnd
+   * даёт рывок поверх анимации контента.
+   */
+  useLayoutEffect(() => {
+    if (enterWaitIndex < 0) return
+    const el = scrollElsRef.current[enterWaitIndex]
+    if (el) el.scrollTop = 0
+  }, [enterWaitIndex])
 
   /** Старт входа, когда в новой секции видно ≥ ~40% высоты вьюпорта — параллельно докрутке Swiper. */
   useLayoutEffect(() => {
@@ -286,12 +294,6 @@ export function WeddingPageSections({
     [],
   )
 
-  /** Как у «Ответ»: до отрисовки входа на секцию сбрасываем внутренний скролл в 0 */
-  useLayoutEffect(() => {
-    const el = scrollElsRef.current[settledSlideIndex]
-    if (el) el.scrollTop = 0
-  }, [settledSlideIndex])
-
   return (
     <Swiper
       className="wedding-swiper h-full min-h-0 w-full flex-1"
@@ -321,6 +323,9 @@ export function WeddingPageSections({
         const to = s.activeIndex
         if (from === to) return
 
+        const scrollEl = scrollElsRef.current[to]
+        if (scrollEl) scrollEl.scrollTop = 0
+
         leaveIndexRef.current = from
         clearEnterToShownTimer()
         setPhaseBySlide((prev) => {
@@ -340,7 +345,6 @@ export function WeddingPageSections({
       }}
       onSlideChangeTransitionEnd={(s) => {
         const active = s.activeIndex
-        setSettledSlideIndex(active)
         const left = leaveIndexRef.current
         if (left !== null && left !== active) {
           setPhaseBySlide((prev) => {
