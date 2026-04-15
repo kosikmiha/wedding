@@ -178,12 +178,14 @@ body {
 }
 
 /* Скролл без видимой полосы — колесо/тач работают как обычно */
-#rsvp .wedding-rsvp-scroll {
+#rsvp .wedding-rsvp-scroll,
+.wedding-slide-nested-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-#rsvp .wedding-rsvp-scroll::-webkit-scrollbar {
+#rsvp .wedding-rsvp-scroll::-webkit-scrollbar,
+.wedding-slide-nested-scroll::-webkit-scrollbar {
   display: none;
 }
 

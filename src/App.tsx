@@ -14,7 +14,6 @@ import { useBottomNavEndRadius } from './hooks/use-bottom-nav-end-radius'
 import { useBottomNavPill } from './hooks/use-bottom-nav-pill'
 import { useIsMaxMd } from './hooks/use-is-max-md'
 import { useNowEverySecond } from './hooks/use-now-every-second'
-import { useSectionReplay } from './hooks/use-section-replay'
 import { getWeddingPhase } from './wedding'
 import { weddingSectionIndexFromHash } from './wedding-sections'
 
@@ -36,7 +35,6 @@ const BOTTOM_NAV_SHADOW =
   'shadow-[0_10px_28px_rgba(0,0,0,0.16)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.42)] md:shadow-[0_8px_32px_rgba(0,0,0,0.12)] md:dark:shadow-[0_8px_32px_rgba(0,0,0,0.45)]'
 
 export default function App() {
-  const { replay, bumpSlideOnLeave } = useSectionReplay()
   const now = useNowEverySecond()
   const weddingPhase = getWeddingPhase(now)
   const swiperRef = useRef<SwiperType | null>(null)
@@ -45,19 +43,10 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(() =>
     weddingSectionIndexFromHash(),
   )
-  const prevSlideRef = useRef(activeIndex)
 
-  const handleActiveIndexChange = useCallback(
-    (index: number) => {
-      const prev = prevSlideRef.current
-      if (prev !== index) {
-        bumpSlideOnLeave(prev)
-        prevSlideRef.current = index
-      }
-      setActiveIndex(index)
-    },
-    [bumpSlideOnLeave],
-  )
+  const handleActiveIndexChange = useCallback((index: number) => {
+    setActiveIndex(index)
+  }, [])
   const isMaxMd = useIsMaxMd()
   const { pill: navPill, pillTransitionsEnabled } = useBottomNavPill(
     activeIndex,
@@ -78,8 +67,6 @@ export default function App() {
         aria-label="Содержание приглашения"
       >
         <WeddingPageSections
-          replay={replay}
-          activeIndex={activeIndex}
           now={now}
           weddingPhase={weddingPhase}
           onSwiper={(swiper) => {

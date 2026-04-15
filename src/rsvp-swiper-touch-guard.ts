@@ -1,18 +1,36 @@
 import type { Swiper as SwiperType } from 'swiper'
-import { WEDDING_RSVP_SECTION_INDEX } from './wedding-sections'
+import { WEDDING_SECTION_IDS } from './wedding-sections'
 
-const RSVP_SLIDE_INDEX = WEDDING_RSVP_SECTION_INDEX
+const N = WEDDING_SECTION_IDS.length
 const EDGE_EPS_PX = 8
 /** После последнего wheel смена секции возможна только когда «тишина» дольше этого окна */
 const WHEEL_SETTLE_MS = 320
 
 let swiperRef: SwiperType | null = null
-let scrollElRef: HTMLElement | null = null
-/** Вся секция «Ответ» (рамка слайда) — попадание по координатам, не только по target */
-let hitAreaElRef: HTMLElement | null = null
+/** Индекс совпадает с `WEDDING_SECTION_IDS` / слайдом Swiper */
+let scrollEls: (HTMLElement | null)[] = Array.from({ length: N }, () => null)
+let hitEls: (HTMLElement | null)[] = Array.from({ length: N }, () => null)
 
-function pointInRsvpHitArea(clientX: number, clientY: number) {
-  const el = hitAreaElRef
+function getActiveIndex(): number {
+  const s = swiperRef
+  if (!s || s.destroyed) return -1
+  return s.activeIndex
+}
+
+function getScrollEl(): HTMLElement | null {
+  const i = getActiveIndex()
+  if (i < 0 || i >= N) return null
+  return scrollEls[i]
+}
+
+function getHitEl(): HTMLElement | null {
+  const i = getActiveIndex()
+  if (i < 0 || i >= N) return null
+  return hitEls[i]
+}
+
+function pointInActiveHitArea(clientX: number, clientY: number) {
+  const el = getHitEl()
   if (!el) return false
   const r = el.getBoundingClientRect()
   return (
@@ -31,7 +49,7 @@ function wheelDeltaToPixels(e: WheelEvent, scrollEl: HTMLElement): number {
 }
 
 function getScrollMetrics() {
-  const scrollEl = scrollElRef
+  const scrollEl = getScrollEl()
   if (!scrollEl) return { st: 0, max: 0 }
   const st = scrollEl.scrollTop
   const max = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight)
@@ -49,9 +67,14 @@ function syncBlockSwipeFromScrollStart() {
 
 function updateAllowTouchMove(clientY: number, startY: number) {
   const swiper = swiperRef
-  const scrollEl = scrollElRef
-  if (!swiper || swiper.destroyed || !scrollEl) return
-  if (swiper.activeIndex !== RSVP_SLIDE_INDEX) {
+  const scrollEl = getScrollEl()
+  if (!swiper || swiper.destroyed || !scrollEl) {
+    if (swiper && !swiper.destroyed) swiper.allowTouchMove = true
+    return
+  }
+
+  const { st, max } = getScrollMetrics()
+  if (max <= EDGE_EPS_PX * 2) {
     swiper.allowTouchMove = true
     return
   }
@@ -61,8 +84,6 @@ function updateAllowTouchMove(clientY: number, startY: number) {
     return
   }
 
-  const st = scrollEl.scrollTop
-  const max = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight)
   const diffY = clientY - startY
 
   if (diffY > 0 && st > EDGE_EPS_PX) {
@@ -83,9 +104,9 @@ function onTouchStart(e: TouchEvent) {
   touchActive = false
   const t = e.touches[0]
   if (!t) return
-  if (!pointInRsvpHitArea(t.clientX, t.clientY)) return
+  if (!pointInActiveHitArea(t.clientX, t.clientY)) return
   const swiper = swiperRef
-  if (!swiper || swiper.activeIndex !== RSVP_SLIDE_INDEX) return
+  if (!swiper || !getScrollEl()) return
   touchActive = true
   touchStartY = t.clientY
   syncBlockSwipeFromScrollStart()
@@ -110,9 +131,9 @@ let pointerActiveId: number | null = null
 function onPointerDown(e: PointerEvent) {
   if (e.pointerType !== 'touch') return
   pointerActiveId = null
-  if (!pointInRsvpHitArea(e.clientX, e.clientY)) return
+  if (!pointInActiveHitArea(e.clientX, e.clientY)) return
   const swiper = swiperRef
-  if (!swiper || swiper.activeIndex !== RSVP_SLIDE_INDEX) return
+  if (!swiper || !getScrollEl()) return
   pointerActiveId = e.pointerId
   pointerStartY = e.clientY
   syncBlockSwipeFromScrollStart()
@@ -148,16 +169,17 @@ function markWheelSession() {
 
 function onWheelDocument(e: WheelEvent) {
   const swiper = swiperRef
-  const scrollEl = scrollElRef
+  const scrollEl = getScrollEl()
   if (!swiper || swiper.destroyed || !scrollEl) return
-  if (swiper.activeIndex !== RSVP_SLIDE_INDEX) return
-  if (!pointInRsvpHitArea(e.clientX, e.clientY)) return
+  if (!pointInActiveHitArea(e.clientX, e.clientY)) return
 
   const st = scrollEl.scrollTop
   const max = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight)
   const dy = wheelDeltaToPixels(e, scrollEl)
   const dominantVertical = Math.abs(e.deltaY) >= Math.abs(e.deltaX)
   if (!dominantVertical) return
+
+  if (max <= EDGE_EPS_PX * 2) return
 
   const innerScrollsDown = dy > 0 && st < max - EDGE_EPS_PX
   const innerScrollsUp = dy < 0 && st > EDGE_EPS_PX
@@ -166,10 +188,7 @@ function onWheelDocument(e: WheelEvent) {
     markWheelSession()
     e.preventDefault()
     e.stopPropagation()
-    scrollEl.scrollTop = Math.min(
-      max,
-      Math.max(0, st + dy),
-    )
+    scrollEl.scrollTop = Math.min(max, Math.max(0, st + dy))
     return
   }
 
@@ -185,7 +204,7 @@ function onWheelDocument(e: WheelEvent) {
 /**
  * Регистрирует capture-слушатели до монтирования Swiper (вызвать один раз из main).
  */
-export function installRsvpSwiperTouchGuard() {
+export function installSwiperNestedScrollTouchGuard() {
   if (installed || typeof document === 'undefined') return
   installed = true
 
@@ -202,13 +221,16 @@ export function installRsvpSwiperTouchGuard() {
   document.addEventListener('wheel', onWheelDocument, { capture: true, passive: false })
 }
 
-/** Секция «Ответ»: скролл, полигон секции, swiper */
-export function setRsvpTouchGuardContext(next: {
+/** @deprecated используйте installSwiperNestedScrollTouchGuard */
+export const installRsvpSwiperTouchGuard = installSwiperNestedScrollTouchGuard
+
+/** Массивы длины `WEDDING_SECTION_IDS.length`: скролл внутри слайда и область попадания для жеста */
+export function setNestedScrollTouchGuardContext(next: {
   swiper: SwiperType | null
-  scrollEl: HTMLElement | null
-  hitAreaEl: HTMLElement | null
+  scrollEls: (HTMLElement | null)[]
+  hitEls: (HTMLElement | null)[]
 }) {
   swiperRef = next.swiper
-  scrollElRef = next.scrollEl
-  hitAreaElRef = next.hitAreaEl
+  scrollEls = next.scrollEls
+  hitEls = next.hitEls
 }

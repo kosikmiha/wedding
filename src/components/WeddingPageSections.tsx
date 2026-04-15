@@ -6,6 +6,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,21 +14,19 @@ import {
 import type { Swiper as SwiperType } from 'swiper'
 import { HashNavigation, Keyboard, Mousewheel } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { SectionEntrance } from './SectionEntrance'
+import { SectionEntrance, type SectionContentPhase } from './SectionEntrance'
 import { WeddingCountdown } from './WeddingCountdown'
 
 const WeddingRsvpStepper = lazy(() => import('./WeddingRsvpStepper'))
 import type { WeddingPhase } from '../wedding'
 import { WEDDING_DETAILS_CHIPS } from '../wedding-details-chips'
 import { WEDDING_PROGRAM } from '../wedding-program'
-import { setRsvpTouchGuardContext } from '../rsvp-swiper-touch-guard'
-import type { WeddingReplayState } from '../hooks/use-section-replay'
+import { setNestedScrollTouchGuardContext } from '../rsvp-swiper-touch-guard'
 import {
   WEDDING_RSVP_SECTION_INDEX,
+  WEDDING_SECTION_IDS,
   weddingSectionIndexFromHash,
 } from '../wedding-sections'
-
-export type { WeddingReplayState }
 
 const SI = {
   hero: 0,
@@ -70,65 +69,228 @@ const STORY_BODY_SENTENCES = [
 ] as const
 
 type Props = {
-  replay: WeddingReplayState
-  activeIndex: number
   now: Dayjs
   weddingPhase: WeddingPhase
   onSwiper: (swiper: SwiperType) => void
   onActiveIndexChange: (index: number) => void
 }
 
-/** Нижний запас под fixed nav + холм на мобилке: `pb-wedding-nav` → `--wedding-nav-clearance` в index.css */
-/** `overscroll-y-contain` — иначе на мобилке жест «назад» по вертикали уходит в pull-to-refresh браузера */
-const slideShell =
-  'box-border flex min-h-0 min-w-0 max-w-full flex-1 flex-col justify-center overflow-x-hidden overflow-y-auto overscroll-y-contain px-5 pt-16 pb-wedding-nav'
+const SECTION_COUNT = WEDDING_SECTION_IDS.length
+
+/** Длительность каскада входа до фазы `shown` после старта `enterUp`. */
+const SLIDE_CONTENT_ENTRANCE_ANIM_MS = 900
+
+/** Доля высоты вьюпорта: при видимой полосе ≥ этого порога — старт анимации входа контента. */
+const SLIDE_CONTENT_ENTER_VIEWPORT_FRACTION = 0.4
+
+const VIEWPORT_ENTER_EPS_PX = 0.5
+
+/** Видимая высота пересечения секции с вьюпортом ≥ `fraction * vh` (с допуском). */
+function sectionPassesViewportHeightFraction(
+  entry: IntersectionObserverEntry,
+  fraction: number,
+): boolean {
+  const vh = window.visualViewport?.height ?? window.innerHeight
+  if (vh <= 0) return entry.isIntersecting && entry.intersectionRatio >= fraction
+  return entry.intersectionRect.height >= vh * fraction - VIEWPORT_ENTER_EPS_PX
+}
+
+/** Внешняя рамка слайда: без скролла — скролл только во внутреннем блоке (как у «Ответ») + nested touch-guard. */
+const slideFrame =
+  'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden'
+
+/** Внутренний скролл — те же правила, что у `.wedding-rsvp-scroll` (touch-guard, wheel debounce). */
+const slideNestedScroll =
+  'wedding-slide-nested-scroll wedding-rsvp-scroll mx-auto flex min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]'
+
+const slideNestedScrollPadDefault = `${slideNestedScroll} touch-pan-y px-5 pt-16 pb-0`
+
+const slideNestedScrollPadRsvp = `${slideNestedScroll} touch-pan-y max-w-2xl px-4 pt-4 sm:px-5 sm:pt-8 md:pt-12 pb-0`
+
+/** Обёртка под контент: по центру по вертикали, если помещается; иначе растёт внутри скролла. */
+const slideContentCenter = 'my-auto w-full min-w-0 shrink-0'
 
 /** Вертикальный Swiper: колесо / свайп по целым секциям; hash в URL */
 export function WeddingPageSections({
-  replay,
-  activeIndex,
   now,
   weddingPhase,
   onSwiper,
   onActiveIndexChange,
 }: Props) {
   const initialSlide = useMemo(() => weddingSectionIndexFromHash(), [])
-  /** Индекс после окончания анимации свайпа — иначе entrance успевает до того, как слайд виден */
+  /** Индекс после окончания анимации свайпа — сброс внутреннего скролла секции */
   const [settledSlideIndex, setSettledSlideIndex] = useState(initialSlide)
-  const swiperRef = useRef<SwiperType | null>(null)
-  const rsvpScrollRef = useRef<HTMLDivElement | null>(null)
-  const rsvpHitAreaRef = useRef<HTMLElement | null>(null)
+  const [phaseBySlide, setPhaseBySlide] = useState<SectionContentPhase[]>(() =>
+    Array.from({ length: SECTION_COUNT }, (_, i) =>
+      i === initialSlide ? 'enterWait' : 'hidden',
+    ),
+  )
+  const entranceTimersRef = useRef<{
+    enterToShown: ReturnType<typeof setTimeout> | null
+  }>({ enterToShown: null })
+  const leaveIndexRef = useRef<number | null>(null)
 
-  const isEntranceActive = useCallback(
-    (sectionIndex: number) =>
-      activeIndex === sectionIndex && settledSlideIndex === sectionIndex,
-    [activeIndex, settledSlideIndex],
+  const swiperRef = useRef<SwiperType | null>(null)
+  const scrollElsRef = useRef<(HTMLElement | null)[]>(
+    Array.from({ length: SECTION_COUNT }, () => null),
+  )
+  const hitElsRef = useRef<(HTMLElement | null)[]>(
+    Array.from({ length: SECTION_COUNT }, () => null),
   )
 
-  const syncRsvpTouchGuard = useCallback(() => {
-    setRsvpTouchGuardContext({
+  const clearEnterToShownTimer = useCallback(() => {
+    const t = entranceTimersRef.current.enterToShown
+    if (t) clearTimeout(t)
+    entranceTimersRef.current.enterToShown = null
+  }, [])
+
+  const beginEnterUpForIndex = useCallback(
+    (targetIndex: number) => {
+      clearEnterToShownTimer()
+      setPhaseBySlide((prev) => {
+        if (prev[targetIndex] !== 'enterWait') return prev
+        const n = [...prev]
+        n[targetIndex] = 'enterUp'
+        return n
+      })
+      entranceTimersRef.current.enterToShown = setTimeout(() => {
+        entranceTimersRef.current.enterToShown = null
+        setPhaseBySlide((prev) => {
+          const n = [...prev]
+          if (n[targetIndex] === 'enterUp') n[targetIndex] = 'shown'
+          return n
+        })
+      }, SLIDE_CONTENT_ENTRANCE_ANIM_MS)
+    },
+    [clearEnterToShownTimer],
+  )
+
+  const enterWaitIndex = useMemo(
+    () => phaseBySlide.findIndex((p) => p === 'enterWait'),
+    [phaseBySlide],
+  )
+
+  /** Старт входа, когда в новой секции видно ≥ ~40% высоты вьюпорта — параллельно докрутке Swiper. */
+  useLayoutEffect(() => {
+    if (enterWaitIndex < 0) return
+
+    let cancelled = false
+    let obs: IntersectionObserver | null = null
+    let rafCheck = 0
+    let rafRetry = 0
+
+    const idx = enterWaitIndex
+
+    let gate = false
+    const run = () => {
+      if (cancelled || gate) return
+      gate = true
+      beginEnterUpForIndex(idx)
+    }
+
+    const attach = (el: HTMLElement) => {
+      obs = new IntersectionObserver(
+        (entries) => {
+          const e = entries[0]
+          if (
+            e &&
+            sectionPassesViewportHeightFraction(
+              e,
+              SLIDE_CONTENT_ENTER_VIEWPORT_FRACTION,
+            )
+          )
+            run()
+        },
+        {
+          root: null,
+          threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        },
+      )
+      obs.observe(el)
+
+      rafCheck = requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect()
+        const vh = window.visualViewport?.height ?? window.innerHeight
+        const visible = Math.min(rect.bottom, vh) - Math.max(rect.top, 0)
+        if (
+          visible >=
+          vh * SLIDE_CONTENT_ENTER_VIEWPORT_FRACTION - VIEWPORT_ENTER_EPS_PX
+        )
+          run()
+      })
+    }
+
+    let attempts = 0
+    const resolveAndAttach = () => {
+      if (cancelled) return
+      const el = hitElsRef.current[idx]
+      if (el) {
+        attach(el)
+        return
+      }
+      attempts += 1
+      if (attempts > 32) return
+      rafRetry = requestAnimationFrame(resolveAndAttach)
+    }
+    resolveAndAttach()
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafCheck)
+      cancelAnimationFrame(rafRetry)
+      obs?.disconnect()
+    }
+  }, [enterWaitIndex, beginEnterUpForIndex])
+
+  useEffect(
+    () => () => {
+      clearEnterToShownTimer()
+    },
+    [clearEnterToShownTimer],
+  )
+
+  const syncNestedTouchGuard = useCallback(() => {
+    setNestedScrollTouchGuardContext({
       swiper: swiperRef.current,
-      scrollEl: rsvpScrollRef.current,
-      hitAreaEl: rsvpHitAreaRef.current,
+      scrollEls: scrollElsRef.current,
+      hitEls: hitElsRef.current,
     })
   }, [])
+
+  /** Стабильные callback-ref по индексу — иначе при каждом ререндере ref(null)/ref(el) и IO сбрасывает «видимость». */
+  const hitRefSlots = useMemo(
+    () =>
+      Array.from({ length: SECTION_COUNT }, (_, index) => (el: HTMLElement | null) => {
+        hitElsRef.current[index] = el
+        syncNestedTouchGuard()
+      }),
+    [syncNestedTouchGuard],
+  )
+  const scrollRefSlots = useMemo(
+    () =>
+      Array.from({ length: SECTION_COUNT }, (_, index) => (el: HTMLElement | null) => {
+        scrollElsRef.current[index] = el
+        syncNestedTouchGuard()
+      }),
+    [syncNestedTouchGuard],
+  )
 
   useEffect(
     () =>
       () =>
-        setRsvpTouchGuardContext({
+        setNestedScrollTouchGuardContext({
           swiper: null,
-          scrollEl: null,
-          hitAreaEl: null,
+          scrollEls: Array.from({ length: SECTION_COUNT }, () => null),
+          hitEls: Array.from({ length: SECTION_COUNT }, () => null),
         }),
     [],
   )
 
-  const resetRsvpInnerScroll = useCallback(() => {
-    const el = rsvpScrollRef.current
+  /** Как у «Ответ»: до отрисовки входа на секцию сбрасываем внутренний скролл в 0 */
+  useLayoutEffect(() => {
+    const el = scrollElsRef.current[settledSlideIndex]
     if (el) el.scrollTop = 0
-  }, [])
-
+  }, [settledSlideIndex])
 
   return (
     <Swiper
@@ -150,30 +312,63 @@ export function WeddingPageSections({
       hashNavigation={{ watchState: true, replaceState: true }}
       onSwiper={(s) => {
         swiperRef.current = s
-        syncRsvpTouchGuard()
+        syncNestedTouchGuard()
         onSwiper(s)
       }}
       onSlideChange={(s) => onActiveIndexChange(s.activeIndex)}
+      onSlideChangeTransitionStart={(s) => {
+        const from = s.previousIndex
+        const to = s.activeIndex
+        if (from === to) return
+
+        leaveIndexRef.current = from
+        clearEnterToShownTimer()
+        setPhaseBySlide((prev) => {
+          const n = [...prev]
+          /** Уход вниз только при реальной смене слайда (from≠to) и только если контент этой секции был видим */
+          const hadVisibleContent =
+            prev[from] === 'shown' ||
+            prev[from] === 'enterUp' ||
+            prev[from] === 'enterWait'
+          n[from] = hadVisibleContent ? 'exitDown' : 'hidden'
+          n[to] = 'enterWait'
+          for (let i = 0; i < SECTION_COUNT; i++) {
+            if (i !== from && i !== to) n[i] = 'hidden'
+          }
+          return n
+        })
+      }}
       onSlideChangeTransitionEnd={(s) => {
-        const i = s.activeIndex
-        setSettledSlideIndex(i)
-        if (i === WEDDING_RSVP_SECTION_INDEX) resetRsvpInnerScroll()
+        const active = s.activeIndex
+        setSettledSlideIndex(active)
+        const left = leaveIndexRef.current
+        if (left !== null && left !== active) {
+          setPhaseBySlide((prev) => {
+            const n = [...prev]
+            n[left] = 'hidden'
+            return n
+          })
+        }
+        leaveIndexRef.current = null
       }}
     >
       <SwiperSlide
-        className="flex! min-h-0 flex-col"
+        className="flex! h-full min-h-0 flex-col"
         data-hash="hero"
       >
-        <section
-          id="hero"
-          className={`relative flex min-h-dvh flex-col justify-center bg-linear-to-br from-(--bg) via-violet-50/40 to-rose-50/30 ${slideShell} dark:via-violet-950/20 dark:to-stone-950/30`}
+        <section ref={hitRefSlots[SI.hero]} id="hero"
+          className={`${slideFrame} bg-linear-to-br from-(--bg) via-violet-50/40 to-rose-50/30 dark:via-violet-950/20 dark:to-stone-950/30`}
           aria-label="Главная"
         >
-          <SectionEntrance
-            replayVersion={replay.hero}
-            active={isEntranceActive(SI.hero)}
-            className="mx-auto flex max-w-3xl flex-col items-center text-center"
+          <div
+            ref={scrollRefSlots[SI.hero]}
+            className={slideNestedScrollPadDefault}
           >
+            <div className={slideContentCenter}>
+            <SectionEntrance
+              phase={phaseBySlide[SI.hero]}
+              className="mx-auto flex max-w-3xl flex-col items-center text-center"
+            >
             <p className="mb-4 text-xs font-medium uppercase tracking-[0.35em] text-(--accent)">
               Свадьба
             </p>
@@ -192,23 +387,29 @@ export function WeddingPageSections({
               <WeddingCountdown now={now} />
             </div>
           </SectionEntrance>
+            </div>
+            <div className="wedding-rsvp-bottom-spacer" aria-hidden />
+          </div>
         </section>
       </SwiperSlide>
 
       <SwiperSlide
-        className="flex! min-h-0 flex-col"
+        className="flex! h-full min-h-0 flex-col"
         data-hash="details"
       >
-        <section
-          id="details"
-          className={`relative flex min-h-dvh flex-col justify-center bg-(--bg) ${slideShell}`}
+        <section ref={hitRefSlots[SI.details]} id="details"
+          className={`${slideFrame} bg-(--bg)`}
           aria-label="Детали"
         >
-          <SectionEntrance
-            replayVersion={replay.details}
-            active={isEntranceActive(SI.details)}
-            className="mx-auto w-full max-w-4xl"
+          <div
+            ref={scrollRefSlots[SI.details]}
+            className={slideNestedScrollPadDefault}
           >
+            <div className={slideContentCenter}>
+            <SectionEntrance
+              phase={phaseBySlide[SI.details]}
+              className="mx-auto w-full max-w-4xl"
+            >
             <div className="grid w-full gap-10 md:grid-cols-2 md:gap-14">
               <div className="text-left">
                 <h2 className="mb-3 font-(family-name:--sans) text-xs font-medium uppercase tracking-[0.35em] text-(--accent)">
@@ -253,23 +454,29 @@ export function WeddingPageSections({
               ))}
             </ul>
           </SectionEntrance>
+            </div>
+            <div className="wedding-rsvp-bottom-spacer" aria-hidden />
+          </div>
         </section>
       </SwiperSlide>
 
       <SwiperSlide
-        className="flex! min-h-0 flex-col"
+        className="flex! h-full min-h-0 flex-col"
         data-hash="story"
       >
-        <section
-          id="story"
-          className={`relative flex min-h-dvh flex-col justify-center bg-linear-to-b from-(--bg) to-(--code-bg)/50 ${slideShell} dark:to-zinc-900/40`}
+        <section ref={hitRefSlots[SI.story]} id="story"
+          className={`${slideFrame} bg-linear-to-b from-(--bg) to-(--code-bg)/50 dark:to-zinc-900/40`}
           aria-label="История"
         >
-          <SectionEntrance
-            replayVersion={replay.story}
-            active={isEntranceActive(SI.story)}
-            className="mx-auto max-w-2xl text-left"
+          <div
+            ref={scrollRefSlots[SI.story]}
+            className={slideNestedScrollPadDefault}
           >
+            <div className={slideContentCenter}>
+            <SectionEntrance
+              phase={phaseBySlide[SI.story]}
+              className="mx-auto max-w-2xl text-left"
+            >
             <blockquote className="text-center font-handwriting text-2xl font-normal leading-snug text-(--text-h) md:text-3xl md:leading-relaxed">
               «Фертоник: не завод, а повод.»
             </blockquote>
@@ -282,31 +489,41 @@ export function WeddingPageSections({
               </p>
             ))}
           </SectionEntrance>
+            </div>
+            <div className="wedding-rsvp-bottom-spacer" aria-hidden />
+          </div>
         </section>
       </SwiperSlide>
 
       <SwiperSlide
-        className="flex! min-h-0 flex-col"
+        className="flex! h-full min-h-0 flex-col"
         data-hash="program"
       >
-        <section
-          id="program"
-          className={`relative flex min-h-dvh flex-col justify-center bg-(--bg) ${slideShell}`}
+        <section ref={hitRefSlots[SI.program]} id="program"
+          className={`${slideFrame} bg-(--bg)`}
           aria-label="Программа"
         >
-          <SectionEntrance
-            replayVersion={replay.program}
-            active={isEntranceActive(SI.program)}
-            className="mx-auto w-full max-w-lg"
+          <div
+            ref={scrollRefSlots[SI.program]}
+            className={slideNestedScrollPadDefault}
           >
+            <div className={slideContentCenter}>
+            <SectionEntrance
+              phase={phaseBySlide[SI.program]}
+              className="mx-auto w-full max-w-lg"
+            >
             <h2 className="mb-8 text-center font-(family-name:--sans) text-xs font-medium uppercase tracking-[0.35em] text-(--accent) sm:mb-12 sm:text-sm">
               Как пройдёт день
             </h2>
             <motion.ol
-              key={replay.program}
               className="relative space-y-0 border-s border-(--border) ps-6 sm:ps-8"
               initial={false}
-              animate={isEntranceActive(SI.program) ? 'show' : 'hidden'}
+              animate={
+                phaseBySlide[SI.program] === 'enterUp' ||
+                phaseBySlide[SI.program] === 'shown'
+                  ? 'show'
+                  : 'hidden'
+              }
               variants={programList}
             >
               {WEDDING_PROGRAM.map((item, index) => (
@@ -329,6 +546,9 @@ export function WeddingPageSections({
               ))}
             </motion.ol>
           </SectionEntrance>
+            </div>
+            <div className="wedding-rsvp-bottom-spacer" aria-hidden />
+          </div>
         </section>
       </SwiperSlide>
 
@@ -336,26 +556,17 @@ export function WeddingPageSections({
         className="flex! h-full min-h-0 flex-col"
         data-hash="rsvp"
       >
-        <section
-          ref={(el) => {
-            rsvpHitAreaRef.current = el
-            syncRsvpTouchGuard()
-          }}
-          id="rsvp"
-          className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-linear-to-t from-violet-50/50 to-(--bg) dark:from-violet-950/30"
+        <section ref={hitRefSlots[SI.rsvp]} id="rsvp"
+          className={`${slideFrame} bg-linear-to-t from-violet-50/50 to-(--bg) dark:from-violet-950/30`}
           aria-label="Ответ"
         >
           <div
-            ref={(el) => {
-              rsvpScrollRef.current = el
-              syncRsvpTouchGuard()
-            }}
-            className="wedding-rsvp-scroll mx-auto flex min-h-0 w-full max-w-2xl flex-1 touch-pan-y flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pt-4 sm:px-5 sm:pt-8 md:pt-12 [-webkit-overflow-scrolling:touch]"
+            ref={scrollRefSlots[SI.rsvp]}
+            className={slideNestedScrollPadRsvp}
           >
             <div className="w-full min-h-0 shrink-0">
               <SectionEntrance
-                replayVersion={replay.rsvp}
-                active={isEntranceActive(SI.rsvp)}
+                phase={phaseBySlide[SI.rsvp]}
                 className="mx-auto w-full max-w-2xl min-h-0"
               >
                 <h2 className="mb-4 text-center font-(family-name: Pattaya) text-[1.6875rem] font-medium tracking-tight text-(--text-h) sm:mb-6 sm:text-4xl sm:tracking-normal md:text-5xl">
