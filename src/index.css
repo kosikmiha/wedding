@@ -22,6 +22,11 @@ html {
    * под жесты / скругления экрана.
    */
   --wedding-safe-bottom: env(safe-area-inset-bottom, 0px);
+  /*
+   * md+ (таблетка / телефон в ландшафте ≥768px): позиция фикс. слота навбара.
+   * Safe-area только здесь — не дублировать env() в padding внутри pill (иначе низ «раздувает»).
+   */
+  --wedding-nav-fixed-bottom-md: calc(1rem + env(safe-area-inset-bottom, 0px));
   /* Зона под #wedding-bottom-nav: bottom-4 + высота pill + 10px + safe-area (без холма — md+) */
   --wedding-nav-clearance: calc(
     var(--wedding-safe-bottom) + 1rem + 3.5rem + 10px
