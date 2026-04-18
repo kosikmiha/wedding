@@ -562,7 +562,7 @@ export function WeddingPageSections({
                           if (isMobile) {
                             e.preventDefault();
                             // Кодируем адрес для поиска в приложении
-                            const encodedAddress = encodeURIComponent(item.address);
+                            const encodedAddress = item.address ? encodeURIComponent(item.address) : '';
                             // Открываем приложение с поиском по адресу
                             window.location.href = `yandexmaps://search?text=${encodedAddress}`;
                             
