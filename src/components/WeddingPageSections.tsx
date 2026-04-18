@@ -434,30 +434,9 @@ export function WeddingPageSections({
                   БЦ «Лениздат»
                 </p>
                 <div className="mb-3 text-sm leading-normal text-(--text) md:text-base">
-                  <p>
-                    <a 
-                      href={`https://yandex.ru/maps/?text=${encodeURIComponent('Набережная реки Фонтанки, 59')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline cursor-pointer"
-                      style={{ color: 'inherit', textDecoration: 'none' }}
-                      onClick={(e) => {
-                        const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.vendor);
-                        
-                        if (isMobile) {
-                          e.preventDefault();
-                          const encodedAddress = encodeURIComponent('Набережная реки Фонтанки, 59');
-                          window.location.href = `yandexmaps://search?text=${encodedAddress}`;
-                          
-                          setTimeout(() => {
-                            window.location.href = `https://yandex.ru/maps/?text=${encodedAddress}`;
-                          }, 1000);
-                        }
-                      }}
-                    >
-                      Набережная реки Фонтанки, 59
-                    </a>
-                  </p>
+                <div className="mb-3 text-sm leading-normal text-(--text) md:text-base">
+                <p>Набережная реки Фонтанки, 59</p>
+              </div>
                   <p className="mt-1">Пространство «Высота»</p>
                 </div>
                 <p className="text-sm leading-tight text-(--text) md:text-base">
