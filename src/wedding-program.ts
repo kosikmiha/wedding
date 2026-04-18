@@ -5,13 +5,15 @@ export type WeddingProgramItem = {
   time: string
   /** Описание этапа */
   description: string
+
+  address?: string 
 }
 
 export const WEDDING_PROGRAM: readonly WeddingProgramItem[] = [
   {
     time: '12:20',
-    description:
-      'Свадебная церемония — обмен клятвами и первый миг, когда день становится особенным.',
+    description: 'Свадебная церемония — обмен клятвами и первый миг, когда день становится особенным.',
+    address: 'Английская наб., 28 - "Дворец бракосочетания № 1"',
   },
   {
     time: '15:00',

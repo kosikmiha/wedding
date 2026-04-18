@@ -434,7 +434,30 @@ export function WeddingPageSections({
                   БЦ «Лениздат»
                 </p>
                 <div className="mb-3 text-sm leading-normal text-(--text) md:text-base">
-                  <p>Набережная реки Фонтанки, 59</p>
+                  <p>
+                    <a 
+                      href={`https://yandex.ru/maps/?text=${encodeURIComponent('Набережная реки Фонтанки, 59')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline cursor-pointer"
+                      style={{ color: 'inherit', textDecoration: 'none' }}
+                      onClick={(e) => {
+                        const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.vendor);
+                        
+                        if (isMobile) {
+                          e.preventDefault();
+                          const encodedAddress = encodeURIComponent('Набережная реки Фонтанки, 59');
+                          window.location.href = `yandexmaps://search?text=${encodedAddress}`;
+                          
+                          setTimeout(() => {
+                            window.location.href = `https://yandex.ru/maps/?text=${encodedAddress}`;
+                          }, 1000);
+                        }
+                      }}
+                    >
+                      Набережная реки Фонтанки, 59
+                    </a>
+                  </p>
                   <p className="mt-1">Пространство «Высота»</p>
                 </div>
                 <p className="text-sm leading-tight text-(--text) md:text-base">
@@ -546,6 +569,35 @@ export function WeddingPageSections({
                   <p className="mt-0.5 text-[0.8125rem] leading-snug text-(--text-h) sm:mt-1 sm:text-base sm:leading-normal">
                     {item.description}
                   </p>
+                  {item.address && (
+                    <p className="mt-1 text-gray-500">
+                      <a 
+                        href={`https://yandex.ru/maps/?text=${encodeURIComponent(item.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'inherit', textDecoration: 'none' }}
+                        className="hover:underline cursor-pointer"
+                        onClick={(e) => {
+                          const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.vendor);
+                          
+                          if (isMobile) {
+                            e.preventDefault();
+                            // Кодируем адрес для поиска в приложении
+                            const encodedAddress = encodeURIComponent(item.address);
+                            // Открываем приложение с поиском по адресу
+                            window.location.href = `yandexmaps://search?text=${encodedAddress}`;
+                            
+                            // Если приложение не открылось через 1 секунду — открываем сайт
+                            setTimeout(() => {
+                              window.location.href = `https://yandex.ru/maps/?text=${encodedAddress}`;
+                            }, 1000);
+                          }
+                        }}
+                      >
+                        {item.address}
+                      </a>
+                    </p>
+                  )}
                 </motion.li>
               ))}
             </motion.ol>
